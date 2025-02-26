@@ -41,7 +41,7 @@ export async function POST(request: Request) {
     const uniqueFileName = `${fileCategory === "videos" ? "video" : "audio"}_${timestamp}_${fileName}`
     const filePath = `usuarios/${user.id}/${fileCategory}/${year}/${month}/${day}/${uniqueFileName}`
 
-    // Generate signed URL for upload
+    // Generate signed URL for upload?
     const [signedUrl] = await bucket.file(filePath).getSignedUrl({
       version: "v4",
       action: "write",
