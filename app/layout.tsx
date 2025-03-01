@@ -7,7 +7,13 @@ import "./globals.css"
 
 const inter = Inter({ subsets: ["latin"] })
 
-export default function RootLayout({ children, params }) {
+export default function RootLayout({ 
+  children, 
+  params 
+}: { 
+  children: React.ReactNode; 
+  params: { segment?: string }; 
+}) {
   // Only apply theme provider to dashboard
   const isDashboard = params?.segment === "dashboard"
 

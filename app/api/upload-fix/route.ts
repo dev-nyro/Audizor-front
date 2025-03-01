@@ -41,21 +41,26 @@ export async function POST(request: Request) {
     const uniqueFileName = `${fileCategory === "videos" ? "video" : "audio"}_${timestamp}_${fileName}`
     const filePath = `usuarios/${user.id}/${fileCategory}/${year}/${month}/${day}/${uniqueFileName}`
 
-    // Generate signed URL for upload with CORS-friendly options
-    const [signedUrl] = await bucket.file(filePath).getSignedUrl({
+    // Configure the signed URL with additional options for CORS
+    const options = {
       version: "v4",
       action: "write",
       expires: Date.now() + 15 * 60 * 1000, // 15 minutes
       contentType: fileType,
+      // Add CORS-friendly headers
       extensionHeaders: {
+        // These don't actually solve CORS issues (that needs to be done on the bucket)
+        // but they indicate our intent
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "PUT",
-        "Access-Control-Allow-Headers": "Content-Type"
+        "Access-Control-Allow-Headers": "Content-Type",
       }
-    })
+    }
+
+    // Generate signed URL for upload
+    const [signedUrl] = await bucket.file(filePath).getSignedUrl(options)
 
     // Return the signed URL for the client to upload to directly
-    // We'll only add the record to the database after confirming upload in process-file API
     return NextResponse.json({ 
       success: true, 
       signedUrl, 
@@ -70,4 +75,3 @@ export async function POST(request: Request) {
     }, { status: 500 })
   }
 }
-
