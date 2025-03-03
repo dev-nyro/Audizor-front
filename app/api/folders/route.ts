@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { createServerSupabaseClient } from "@/lib/supabase-server"
 
-// GET handler - Get all folders for the current user
+// Simplified folders API with better error handling
 export async function GET(request: Request) {
   const supabase = createServerSupabaseClient()
 
@@ -16,10 +16,10 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Fetch folders from the database - simplified query to avoid errors
+    // Fetch folders from the database - corrected to use only existing columns
     const { data: foldersData, error: foldersError } = await supabase
       .from("carpetas")
-      .select("id, nombre, carpeta_padre_id, fecha_creacion")
+      .select("id, nombre, fecha_creacion")
       .eq("usuario_id", user.id)
       .order("nombre", { ascending: true })
 
@@ -31,11 +31,10 @@ export async function GET(request: Request) {
       }, { status: 500 })
     }
 
-    // Transform to frontend format - without the file count to simplify
+    // Transform to frontend format - removed parentId since carpeta_padre_id doesn't exist
     const folders = foldersData.map(folder => ({
       id: folder.id,
       name: folder.nombre,
-      parentId: folder.carpeta_padre_id,
       createdAt: new Date(folder.fecha_creacion).toLocaleString(),
       fileCount: 0 // Initialize with 0 to avoid errors
     }));
@@ -68,19 +67,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { name, parentId } = await request.json()
+    const { name } = await request.json()
 
     if (!name || typeof name !== 'string' || !name.trim()) {
       return NextResponse.json({ error: "Folder name is required" }, { status: 400 })
     }
 
-    // Create folder in database
+    // Create folder in database - removed carpeta_padre_id
     const { data: folder, error: createError } = await supabase
       .from("carpetas")
       .insert({
         nombre: name.trim(),
         usuario_id: user.id,
-        carpeta_padre_id: parentId || null,
         fecha_creacion: new Date().toISOString()
       })
       .select()
@@ -99,7 +97,6 @@ export async function POST(request: Request) {
       folder: {
         id: folder.id,
         name: folder.nombre,
-        parentId: folder.carpeta_padre_id,
         createdAt: new Date(folder.fecha_creacion).toLocaleString(),
         fileCount: 0
       }

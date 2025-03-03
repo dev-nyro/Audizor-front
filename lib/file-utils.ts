@@ -74,7 +74,6 @@ export async function getFilesFromServer() {
         transcriptUrl: file.ruta_transcripcion,
         status: file.estado_procesamiento || 'processing',
         folderId: file.carpeta_id,
-        thumbnailUrl: file.ruta_miniatura,
       });
     } else {
       // If file doesn't exist, mark it for deletion in the database

@@ -121,6 +121,63 @@ audizor-front/
 └── styles/              # Global styles
 ```
 
+## Database Schema
+
+The application uses a Supabase PostgreSQL database with the following schema:
+
+### Tables
+
+**usuarios** (Users)
+- `id` (uuid, primary key)
+- `nombre` (text) - User's name
+- `email` (text)
+- `google_id` (text)
+- `rol` (text) - User role
+- `fecha_creacion` (timestamp) - Creation date
+
+**archivos_subidos** (Uploaded Files)
+- `id` (uuid, primary key)
+- `usuario_id` (uuid) - References users.id
+- `nombre_archivo` (text) - Filename
+- `tipo` (text) - File type
+- `fecha_subida` (timestamp) - Upload date
+- `ruta_archivo` (text) - File path
+- `duracion` (numeric) - Duration
+- `tamano` (numeric) - File size
+- `carpeta_id` (uuid) - References carpetas.id
+
+**transcriptions**
+- `id` (uuid, primary key)
+- `archivo_id` (uuid) - References archivos_subidos.id
+- `texto_transcripcion` (text) - Transcription text
+- `fecha_generacion` (timestamp) - Generation date
+- `estado` (text) - Status
+- `idioma` (text) - Language
+
+**transcription_jobs**
+- `id` (uuid, primary key)
+- `id_usuario` (uuid) - References usuarios.id
+- `ruta_audio` (text) - Audio file path
+- `estado` (text) - Job status
+- `intentos` (int4) - Number of attempts
+- `fecha_creacion` (timestamptz) - Creation date
+- `fecha_actualizacion` (timestamptz) - Last update
+- `mensaje_error` (text) - Error message
+- `nivel` (text) - Level
+
+**carpetas**
+- `id` (uuid, primary key)
+- `usuario_id` (uuid) - References usuarios.id
+- `nombre` (text) - Folder name
+- `fecha_creacion` (timestamp) - Creation date
+
+### Relationships
+- `archivos_subidos.usuario_id` → `usuarios.id`
+- `archivos_subidos.carpeta_id` → `carpetas.id`
+- `transcriptions.archivo_id` → `archivos_subidos.id`
+- `transcription_jobs.id_usuario` → `usuarios.id`
+- `carpetas.usuario_id` → `usuarios.id`
+
 ## Authentication Flow
 
 Authentication is handled through Supabase with email/password login flow:

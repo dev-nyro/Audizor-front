@@ -48,6 +48,3 @@ Audizor is a Next.js application for audio/video transcription services with fea
 ## Authentication
 Authentication is handled through Supabase with email/password and OAuth options.
 Use the auth utilities in `/lib/auth.ts` for auth operations.
-
-## Testing
-Tests are written with Jest and follow the pattern `**/__tests__/**/*.test.ts`

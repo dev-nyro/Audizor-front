@@ -61,7 +61,6 @@ export async function POST(request: Request) {
       ruta_archivo: fileUrl,
       tamano: fileSize || 0,
       carpeta_id: folderId || null,
-      estado_procesamiento: 'processing',
     }).select();
 
     if (error) {

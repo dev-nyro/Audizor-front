@@ -107,6 +107,7 @@ export function DashboardFix({ initialFiles }: { initialFiles: FileType[] }) {
       const response = await fetch('/api/files')
       if (response.ok) {
         const data = await response.json()
+        console.log("Files received from API:", data.files)
         setFiles(data.files || [])
       } else {
         console.error("Error fetching files: Status", response.status)
@@ -140,23 +141,32 @@ export function DashboardFix({ initialFiles }: { initialFiles: FileType[] }) {
       .filter(file => {
         // Make sure we have files with valid IDs
         if (!file.id) return false;
+        
         // Filter by folder
-        const folderMatch = selectedFolder ? file.folderId === selectedFolder : true;
+        const folderMatch = selectedFolder 
+          ? file.folderId === selectedFolder 
+          : !file.folderId || file.folderId === "";
+          
         // Filter by search query
         const searchMatch = searchQuery
           ? file.name.toLowerCase().includes(searchQuery.toLowerCase())
           : true;
-        // Filter by file type
+          
+        // Filter by file type - FIXED to handle types without slashes
         let typeMatch = true;
         if (filterType === "audio") {
-          typeMatch = file.type.startsWith("audio/");
+          typeMatch = file.type.startsWith("audio") || file.type === "audio";
         } else if (filterType === "video") {
-          typeMatch = file.type.startsWith("video/");
+          typeMatch = file.type.startsWith("video") || file.type === "video";
         } else if (filterType === "unprocessed") {
           typeMatch = file.status !== "processed";
         }
-        return folderMatch && searchMatch && typeMatch;
+        
+        const result = folderMatch && searchMatch && typeMatch;
+        console.log(`File ${file.name}: folder=${folderMatch} search=${searchMatch} type=${typeMatch} => ${result}`);
+        return result;
       })
+      // Rest of the sorting logic remains unchanged
       .sort((a, b) => {
         if (sortBy === 'date') {
           const dateA = new Date(a.lastModified).getTime()
