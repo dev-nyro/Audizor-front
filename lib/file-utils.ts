@@ -45,7 +45,8 @@ export async function getFilesFromServer() {
     throw new Error("Not authenticated")
   }
 
-  const { data, error } = await supabase
+  // First fetch files
+  const { data: files, error } = await supabase
     .from("archivos_subidos")
     .select("*")
     .eq("usuario_id", user.id)
@@ -56,14 +57,36 @@ export async function getFilesFromServer() {
     return []
   }
 
-  // Filter files to only include those that exist in the bucket
-  const validFiles = [];
+  // Then fetch all transcriptions for these files in a single query
+  const fileIds = files.map(file => file.id)
+  const { data: transcriptions, error: transcriptError } = await supabase
+    .from("transcriptions")
+    .select("archivo_id, estado")
+    .in("archivo_id", fileIds)
+  
+  if (transcriptError) {
+    console.error("Error fetching transcriptions:", transcriptError)
+  }
 
-  for (const file of data) {
-    const filePath = extractFilePath(file.ruta_archivo);
-    const exists = await checkFileExists(filePath);
+  // Create a map for quick lookup of transcription status
+  const transcriptionStatusMap = new Map()
+  if (transcriptions) {
+    transcriptions.forEach(trans => {
+      transcriptionStatusMap.set(trans.archivo_id, trans.estado)
+    })
+  }
+
+  // Filter files to only include those that exist in the bucket
+  const validFiles = []
+
+  for (const file of files) {
+    const filePath = extractFilePath(file.ruta_archivo)
+    const exists = await checkFileExists(filePath)
     
     if (exists) {
+      // Get status from transcriptions table or default to processing
+      const status = transcriptionStatusMap.get(file.id) || 'processing'
+      
       validFiles.push({
         id: file.id,
         name: file.nombre_archivo,
@@ -71,18 +94,15 @@ export async function getFilesFromServer() {
         size: file.tamano,
         lastModified: new Date(file.fecha_subida).toLocaleString(),
         url: file.ruta_archivo,
-        transcriptUrl: file.ruta_transcripcion,
-        status: file.estado_procesamiento || 'processing',
+        status: status,
         folderId: file.carpeta_id,
-      });
+      })
     } else {
-      // If file doesn't exist, mark it for deletion in the database
-      console.warn(`File not found in storage: ${filePath}. Marking for cleanup.`);
-      
+      console.warn(`File not found in storage: ${filePath}. Marking for cleanup.`)
       // Optional: Delete the record from the database
-      // await supabase.from("archivos_subidos").delete().eq("id", file.id);
+      // await supabase.from("archivos_subidos").delete().eq("id", file.id)
     }
   }
 
-  return validFiles;
+  return validFiles
 }

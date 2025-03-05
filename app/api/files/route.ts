@@ -62,6 +62,27 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Failed to fetch files" }, { status: 500 })
     }
 
+    // Fetch transcription statuses
+    const fileIds = filesData.map(file => file.id)
+    
+    // Fetch transcriptions for the files
+    const { data: transcriptions, error: transcriptError } = await supabase
+      .from("transcriptions")
+      .select("*")
+      .in("archivo_id", fileIds)
+    
+    if (transcriptError) {
+      console.error("Error fetching transcriptions:", transcriptError)
+    }
+    
+    // Create a map for quick lookup of transcription status
+    const transcriptionStatusMap = new Map()
+    if (transcriptions) {
+      transcriptions.forEach(trans => {
+        transcriptionStatusMap.set(trans.archivo_id, trans.estado)
+      })
+    }
+
     // Validate files - check if they exist in storage
     const validFiles = [];
 
@@ -70,6 +91,11 @@ export async function GET(request: Request) {
       const exists = await checkFileExists(filePath);
       
       if (exists) {
+        // Get status from transcriptions map
+        const statusValue = transcriptionStatusMap.get(file.id);
+        // Ensure status is a string or provide a default value
+        const status = statusValue ? String(statusValue): "pending";
+
         validFiles.push({
           id: file.id,
           name: file.nombre_archivo,
@@ -78,12 +104,11 @@ export async function GET(request: Request) {
           lastModified: new Date(file.fecha_subida).toLocaleString(),
           url: file.ruta_archivo,
           transcriptUrl: file.ruta_transcripcion,
-          status: file.estado_procesamiento || 'processing',
+          status: status,
           folderId: file.carpeta_id,
           thumbnailUrl: file.ruta_miniatura,
         });
       } else {
-        // If file doesn't exist, we could mark it for cleanup here
         console.warn(`File not found in storage: ${filePath}. Not including in results.`);
       }
     }

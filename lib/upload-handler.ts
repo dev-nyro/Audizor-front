@@ -1,3 +1,5 @@
+import { ProgressCallback, ErrorCallback, UploadResult } from "@/types";
+
 /**
  * Enhanced file upload utilities with improved CORS handling
  */
@@ -59,26 +61,26 @@ export async function getSignedUploadUrl(
 export async function uploadAndProcessFile(
   file: File, 
   folderId: string | null = null,
-  onProgress?: (progress: number) => void,
-  onError?: (error: Error) => void
-): Promise<{ success: boolean, filePath?: string }> {
+  onProgress?: ProgressCallback,
+  onError?: ErrorCallback
+): Promise<UploadResult> {
   try {
-    // Step 1: Get signed URL
+    // Step 1: Get a signed URL from our API
     const { signedUrl, filePath, fileUrl } = await getSignedUploadUrl(
       file.name,
       file.type,
       file.size,
       folderId
-    )
+    );
     
-    // Step 2: Upload file using CORS-friendly method
-    const uploadSuccess = await uploadToGCS(file, signedUrl, onProgress)
+    // Step 2: Upload file directly to GCS using the signed URL
+    const uploadSuccess = await uploadToGCS(file, signedUrl, onProgress);
     
     if (!uploadSuccess) {
-      throw new Error("Failed to upload file to Google Cloud Storage")
+      throw new Error("Failed to upload file to storage");
     }
     
-    // Step 3: Notify backend to process the file
+    // Step 3: Process the file metadata in our backend
     const processResponse = await fetch('/api/process-file', {
       method: 'POST',
       headers: {
@@ -91,18 +93,34 @@ export async function uploadAndProcessFile(
         fileSize: file.size,
         folderId
       }),
-    })
-
+    });
+    
     if (!processResponse.ok) {
-      const errorData = await processResponse.json()
-      throw new Error(errorData.error || "Failed to process file")
+      const errorData = await processResponse.json();
+      throw new Error(errorData.error || "Failed to process file");
     }
     
-    return { success: true, filePath }
+    const result = await processResponse.json();
+    
+    return {
+      success: true,
+      file: {
+        id: result.fileId,
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        lastModified: new Date().toLocaleString(),
+        url: fileUrl,
+        status: 'processing'
+      }
+    };
   } catch (error) {
-    const errorObj = error instanceof Error ? error : new Error(String(error))
-    console.error("Error in upload process:", errorObj)
-    if (onError) onError(errorObj)
-    return { success: false }
+    if (onError && error instanceof Error) {
+      onError(error);
+    }
+    return { 
+      success: false, 
+      error: error instanceof Error ? error : new Error("Unknown upload error")
+    };
   }
 }
